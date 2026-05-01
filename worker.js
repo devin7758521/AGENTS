@@ -1,6 +1,6 @@
 import { analyzeTraces } from './analyzer.js';
 import { buildDebugView } from './debug.js';
-import { selectAccount, updateAccountAfterRun } from './matrix.js';
+import { selectAccount, updateAccountAfterRun, validateMatrix } from './matrix.js';
 import { createDraft } from './publish/draft.js';
 import { publishToX } from './publish/x.js';
 import { evaluateRisk, hashContent } from './risk.js';
@@ -10,9 +10,9 @@ function json(data, status = 200) { return new Response(JSON.stringify(data, nul
 function addStep(trace, name, start) { trace.steps.push({ name, durationMs: Date.now() - start }); }
 
 async function runJob(env, payload = {}, replay = false, dryRun = false) {
-  const trace = { traceId: crypto.randomUUID(), startedAt: new Date().toISOString(), mode: 'semi-auto', steps: [], status: 'running', errors: [], replay, dryRun };
-  const history = await getHistory(env.AGENT_KV);
   const settings = await getSettings(env.AGENT_KV);
+  const trace = { traceId: crypto.randomUUID(), startedAt: new Date().toISOString(), mode: settings.mode || 'semi-auto', steps: [], status: 'running', errors: [], replay, dryRun };
+  const history = await getHistory(env.AGENT_KV);
   const matrix = await getMatrix(env.AGENT_KV);
 
   try {
@@ -109,7 +109,9 @@ export default {
     if (url.pathname === '/api/matrix') {
       if (request.method === 'GET') return json(await getMatrix(env.AGENT_KV));
       if (request.method === 'PUT') {
-        const matrix = await request.json();
+        const matrix = await request.json().catch(() => null);
+        const validation = validateMatrix(matrix);
+        if (!validation.ok) return json({ error: validation.error }, 400);
         await setMatrix(env.AGENT_KV, matrix);
         return json({ ok: true });
       }

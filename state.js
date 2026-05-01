@@ -6,9 +6,9 @@ const QUEUE_KEY = 'queue';
 const SETTINGS_KEY = 'settings';
 
 const defaultMatrix = [
-  { id: 'x-main', platform: 'x', postCapPerDay: 10, cooldown: 30, riskLevel: 'medium', lastPostAt: 0, postsToday: 0 },
-  { id: 'xhs-draft', platform: 'xiaohongshu', postCapPerDay: 20, cooldown: 20, riskLevel: 'low', lastPostAt: 0, postsToday: 0 },
-  { id: 'douyin-draft', platform: 'douyin', postCapPerDay: 20, cooldown: 20, riskLevel: 'low', lastPostAt: 0, postsToday: 0 }
+  { id: 'x-main', platform: 'x', postCapPerDay: 10, cooldownMinutes: 30, riskLevel: 'medium', lastPostAt: 0, postsToday: 0 },
+  { id: 'xhs-draft', platform: 'xiaohongshu', postCapPerDay: 20, cooldownMinutes: 20, riskLevel: 'low', lastPostAt: 0, postsToday: 0 },
+  { id: 'douyin-draft', platform: 'douyin', postCapPerDay: 20, cooldownMinutes: 20, riskLevel: 'low', lastPostAt: 0, postsToday: 0 }
 ];
 
 const defaultSettings = { mode: 'semi-auto', circuitBreakerThreshold: 5, highFreqWindowSec: 120, highFreqLimit: 8 };
@@ -23,8 +23,19 @@ export async function putJson(kv, key, value) {
   await kv.put(key, JSON.stringify(value));
 }
 
+function migrateLegacyMatrix(matrix) {
+  if (!Array.isArray(matrix)) return defaultMatrix;
+  return matrix.map((m) => {
+    if (typeof m.cooldownMinutes === 'number') return m;
+    const cooldownMinutes = typeof m.cooldown === 'number' ? m.cooldown : 0;
+    const { cooldown, ...rest } = m;
+    return { ...rest, cooldownMinutes };
+  });
+}
+
 export async function getMatrix(kv) {
-  return getJson(kv, MATRIX_KEY, defaultMatrix);
+  const matrix = await getJson(kv, MATRIX_KEY, defaultMatrix);
+  return migrateLegacyMatrix(matrix);
 }
 
 export async function setMatrix(kv, matrix) {
@@ -65,7 +76,15 @@ export async function setQueue(kv, queue) {
 
 export async function saveTrace(kv, trace) {
   await putJson(kv, TRACE_PREFIX + trace.traceId, trace);
-  await appendHistory(kv, { traceId: trace.traceId, status: trace.status, startedAt: trace.startedAt, finishedAt: trace.finishedAt, accountId: trace.accountId, platform: trace.platform });
+  await appendHistory(kv, {
+    traceId: trace.traceId,
+    status: trace.status,
+    startedAt: trace.startedAt,
+    finishedAt: trace.finishedAt,
+    accountId: trace.accountId,
+    platform: trace.platform,
+    contentHash: trace.contentHash || null
+  });
 }
 
 export async function getTrace(kv, traceId) {
