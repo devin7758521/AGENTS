@@ -7,6 +7,7 @@
 <button onclick="refresh()">Refresh</button>
 <div class="row"><div class="card"><h3>Status/History</h3><pre id="history"></pre></div><div class="card"><h3>Matrix</h3><pre id="matrix"></pre></div></div>
 <div class="row"><div class="card"><h3>Debug</h3><pre id="debug"></pre></div><div class="card"><h3>Analyze</h3><pre id="analyze"></pre></div></div>
+<div class="row"><div class="card"><h3>Trace List</h3><ul id="traces"></ul></div></div>
 <script>
 async function j(url,opt){const r=await fetch(url,opt);return r.json()}
 async function run(){await j('/api/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirmed:true,platform:'x'})});await refresh();}
@@ -14,10 +15,20 @@ async function refresh(){
   const dbg=await j('/api/debug');
   const mat=await j('/api/matrix');
   const ana=await j('/api/analyze');
+  const tracesData=await j('/api/traces');
   history.textContent=JSON.stringify(dbg.lastTrace,null,2);
   matrix.textContent=JSON.stringify(mat,null,2);
   debug.textContent=JSON.stringify(dbg,null,2);
   analyze.textContent=JSON.stringify(ana,null,2);
+  traces.innerHTML='';
+  (tracesData.traces||[]).slice(0,20).forEach(t=>{
+    const li=document.createElement('li');
+    const a=document.createElement('a');
+    a.href='/public/trace.html?id='+encodeURIComponent(t.traceId);
+    a.textContent=`${t.traceId} (${t.status})`;
+    li.appendChild(a);
+    traces.appendChild(li);
+  });
 }
 refresh();
 </script>

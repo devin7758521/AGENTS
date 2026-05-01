@@ -90,6 +90,11 @@ export default {
       return json(buildDebugView({ traces: history, errors, queue }));
     }
 
+    if (url.pathname === '/api/traces') {
+      const history = await getHistory(env.AGENT_KV);
+      return json({ traces: history.slice(0, 100) });
+    }
+
     if (url.pathname === '/api/replay' && request.method === 'POST') {
       const payload = await request.json().catch(() => ({}));
       return json(await runJob(env, payload, true, payload.dryRun === true));
