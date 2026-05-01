@@ -1,0 +1,24 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Agent Worker Dashboard</title>
+<style>body{font-family:Arial;max-width:1000px;margin:20px auto}pre{background:#f4f4f4;padding:10px;overflow:auto}.row{display:flex;gap:20px}.card{flex:1;border:1px solid #ddd;padding:12px}</style>
+</head><body>
+<h1>Agent Worker Dashboard</h1>
+<button onclick="run()">Run (confirm)</button>
+<button onclick="refresh()">Refresh</button>
+<div class="row"><div class="card"><h3>Status/History</h3><pre id="history"></pre></div><div class="card"><h3>Matrix</h3><pre id="matrix"></pre></div></div>
+<div class="row"><div class="card"><h3>Debug</h3><pre id="debug"></pre></div><div class="card"><h3>Analyze</h3><pre id="analyze"></pre></div></div>
+<script>
+async function j(url,opt){const r=await fetch(url,opt);return r.json()}
+async function run(){await j('/api/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirmed:true,platform:'x'})});await refresh();}
+async function refresh(){
+  const dbg=await j('/api/debug');
+  const mat=await j('/api/matrix');
+  const ana=await j('/api/analyze');
+  history.textContent=JSON.stringify(dbg.lastTrace,null,2);
+  matrix.textContent=JSON.stringify(mat,null,2);
+  debug.textContent=JSON.stringify(dbg,null,2);
+  analyze.textContent=JSON.stringify(ana,null,2);
+}
+refresh();
+</script>
+</body></html>

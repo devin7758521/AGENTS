@@ -1,0 +1,12 @@
+name = "agent-worker"
+main = "worker.js"
+compatibility_date = "2026-05-01"
+
+[[kv_namespaces]]
+binding = "AGENT_KV"
+id = "REPLACE_WITH_YOUR_KV_ID"
+preview_id = "REPLACE_WITH_YOUR_PREVIEW_KV_ID"
+
+[assets]
+directory = "./"
+binding = "ASSETS"
