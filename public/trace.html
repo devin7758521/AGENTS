@@ -1,0 +1,36 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Trace Detail</title>
+<style>
+body{font-family:Arial;max-width:1000px;margin:20px auto}
+pre{background:#f4f4f4;padding:10px;overflow:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{border:1px solid #ddd;padding:12px}
+</style>
+</head><body>
+<h1>Trace Detail</h1>
+<p><a href="/public/index.html">← Back to dashboard</a></p>
+<div class="grid">
+  <div class="card"><h3>Trace</h3><pre id="trace"></pre></div>
+  <div class="card"><h3>Replay</h3>
+    <button onclick="replay(true)">Replay Dry Run</button>
+    <button onclick="replay(false)">Replay Real</button>
+    <pre id="replayResult"></pre>
+  </div>
+</div>
+<script>
+async function j(url,opt){const r=await fetch(url,opt);return r.json()}
+const params=new URLSearchParams(location.search);
+const id=params.get('id');
+if(!id){trace.textContent='missing ?id='}
+async function load(){
+  const data=await j('/api/trace?id='+encodeURIComponent(id));
+  trace.textContent=JSON.stringify(data,null,2);
+}
+async function replay(dryRun){
+  const payload={confirmed:true,dryRun};
+  const result=await j('/api/replay',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+  replayResult.textContent=JSON.stringify(result,null,2);
+}
+load();
+</script>
+</body></html>
