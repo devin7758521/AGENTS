@@ -4,7 +4,7 @@ compatibility_date = "2026-05-01"
 
 [[kv_namespaces]]
 binding = "AGENT_KV"
-id = "REPLACE_WITH_YOUR_KV_ID"
+id = "8b622ec4565f463aa8176c109b97f6d3"
 preview_id = "REPLACE_WITH_YOUR_PREVIEW_KV_ID"
 
 [assets]
