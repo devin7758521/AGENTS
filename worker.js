@@ -9,6 +9,31 @@ import { appendError, getErrors, getHistory, getMatrix, getQueue, getSettings, g
 function json(data, status = 200) { return new Response(JSON.stringify(data, null, 2), { status, headers: { 'content-type': 'application/json' } }); }
 function addStep(trace, name, start) { trace.steps.push({ name, durationMs: Date.now() - start }); }
 
+function ensureBindings(env) {
+  const missing = [];
+  if (!env.AGENT_KV) missing.push('AGENT_KV');
+  if (!env.ASSETS || typeof env.ASSETS.fetch !== 'function') missing.push('ASSETS');
+  return missing;
+}
+
+async function checkCloudflareConnectivity() {
+  const diagnostics = { ok: false, checkedAt: new Date().toISOString() };
+  try {
+    const resp = await fetch('https://1.1.1.1/cdn-cgi/trace', { method: 'GET' });
+    diagnostics.httpStatus = resp.status;
+    diagnostics.ok = resp.ok;
+    if (resp.ok) {
+      const text = await resp.text();
+      const colo = text.split('\n').find((line) => line.startsWith('colo='));
+      diagnostics.colo = colo ? colo.replace('colo=', '') : 'unknown';
+    }
+  } catch (error) {
+    diagnostics.error = error.message;
+  }
+  return diagnostics;
+}
+
+
 async function runJob(env, payload = {}, replay = false, dryRun = false) {
   const settings = await getSettings(env.AGENT_KV);
   const trace = { traceId: crypto.randomUUID(), startedAt: new Date().toISOString(), mode: settings.mode || 'semi-auto', steps: [], status: 'running', errors: [], replay, dryRun };
@@ -70,8 +95,20 @@ async function runJob(env, payload = {}, replay = false, dryRun = false) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const missingBindings = ensureBindings(env);
     if (url.pathname === '/') return Response.redirect(url.origin + '/public/index.html', 302);
-    if (url.pathname.startsWith('/public/')) return env.ASSETS.fetch(request);
+    if (url.pathname === '/api/health') {
+      const connectivity = await checkCloudflareConnectivity();
+      return json({ ok: missingBindings.length === 0 && connectivity.ok, missingBindings, connectivity });
+    }
+    if (url.pathname.startsWith('/public/')) {
+      if (missingBindings.includes('ASSETS')) return json({ error: 'missing_assets_binding' }, 500);
+      return env.ASSETS.fetch(request);
+    }
+
+    if (missingBindings.includes('AGENT_KV') && url.pathname.startsWith('/api/')) {
+      return json({ error: 'missing_kv_binding', missingBindings }, 500);
+    }
 
     if (url.pathname === '/api/run' && request.method === 'POST') {
       const payload = await request.json().catch(() => ({}));
